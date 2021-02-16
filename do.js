@@ -9,10 +9,6 @@ class DataObject{
         this._timestamp = Date.now();
     }
 
-    set path(path){
-        this._path = path;
-    }
-
     set md5(md5){
         this._md5 = md5;
     }
@@ -25,10 +21,6 @@ class DataObject{
         return this._version;
     }
 
-    get path(){
-        return this._path;
-    }
-
     get md5(){
         return this._md5;
     }
@@ -37,13 +29,18 @@ class DataObject{
         return this._type;
     }
 
-    calmd5(){
-        if(self._path && fs.existsSync(self._path)){
-            md5file(self._path).then(hash => {
-                return hash
-            })
-        }
-        return null;
+    calmd5(path){
+        return new Promise((resolve, reject) =>{
+            if(path && fs.existsSync(path)){
+                md5file(path).then(data =>{
+                    resolve(data)
+                }).catch(e => {
+                    reject(e)
+                })
+            }else{
+                reject(`could not find ${path}`);
+            }
+        })
     }
 };
 

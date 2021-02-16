@@ -15,7 +15,6 @@ class DataBase{
             if(err){
                 throw new Error(`can not count data ${record}, error: ${err}`);
             }
-            console.log(record, count);
             if(count > 0){
                 throw new Error(`record already exists ${record.name}:${record.version}:${record.type}`);
             }

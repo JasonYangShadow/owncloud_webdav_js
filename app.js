@@ -59,7 +59,7 @@ yargs.command({
         }
     },
     handler: function(argv){
-        server(argv.url, argv.user, argv.pass, argv.pkg, argv.ver, argv.type, argv.upload??false, argv.file??'');
+        server(argv.url, argv.user, argv.pass, argv.pkg, argv.ver, argv.type, argv.upload=false, argv.file='');
     }
 })
 
@@ -105,7 +105,7 @@ yargs.command({
         }
     },
     handler: function(argv){
-        client(argv.url, argv.user, argv.pass, argv.pkg, argv.ver, argv.type, argv.download??false, argv.file??'');
+        client(argv.url, argv.user, argv.pass, argv.pkg, argv.ver, argv.type, argv.download=false, argv.file='');
     }
 })
 
@@ -116,13 +116,10 @@ yargs.command({
 
 //server:
 //SUNIZ-QCGJF-FRLJX-BINXT
-const os = new ocloud.Server("http://192.168.0.199/remote.php/dav/files/user/", "admin", "SUNIZ-QCGJF-FRLJX-BINXT");
-os.getDir('/').then(data => {console.log(data)});
+//const os = new ocloud.Server("http://192.168.0.199/remote.php/dav/files/admin/", "admin", "SUNIZ-QCGJF-FRLJX-BINXT");
+//os.uploadpkg('test.docx', '0.1','docker', './test.docx');
 
-//const oc= new ocloud.Client("http://192.168.0.199/remote.php/dav/files/user/", "user", "FLRTB-FCRRP-PAKFS-VVTYL");
-//oc.getDir('/').then((data) => {console.log(data)}).catch(e =>{console.error(e)});
-//oc.downloadfile('/ownCloud Manual.pdf', './file');
-//oc.uploadfile('test.bmp', 'test file');
-//const ob = new dobject.DataObject('p1', 'v1', 'Docker');
-//const db = new dbase.DataBase('./nedb');
-//console.log(db.save(ob).then((data) => console.log(data)))
+const oc= new ocloud.Client("http://192.168.0.199/remote.php/dav/files/user/", "user", "FLRTB-FCRRP-PAKFS-VVTYL");
+//oc.search('test.docx').then(data => {console.log(data)});
+//oc.searchpkg('test.docx','0.1','docker').then(data => {console.log(data)});
+oc.download('test.docx','0.1','docker','./file').then(data => console.log(data));
