@@ -1,23 +1,13 @@
+#! /usr/bin/env node
 'use strict'
 
 const ocloud= require('./owncloud');
-const dobject= require('./do');
-const dbase= require('./db');
 const yargs = require('yargs');
-const { version } = require('yargs');
-
-function server(url, user, pass, pkg, ver, type, upload, file){
-    console.log(url, user, pass, pkg, ver, type, upload, file);
-}
-
-function client(url, user, pass, pkg, ver, type, download, file){
-    console.log(url, user, pass, pkg, ver, type, download, file);
-}
 
 yargs.version('0.0.1');
 yargs.command({
-    command: 'server',
-    describe: 'execute as server role, you can upload packages',
+    command: 'search',
+    describe: 'search pkg',
     builder: {
         url: {
             describe: 'owncloud webdav url',
@@ -35,37 +25,21 @@ yargs.command({
             type: 'string'
         },
         pkg: {
-            decribe: 'package name',
+            describe: 'package name',
             demandOption: true,
             type: 'string'
         },
-        ver: {
-            describe: 'package version',
-            demandOption: true,
-            type: 'string'
-        },
-        type: {
-            describe: 'package type(Docker, Singularity, OCI, LPMX)',
-            demandOption: true,
-            type: 'string'
-        },
-        upload: {
-            describe: 'upload package',
-            type: 'boolean'
-        },
-        file: {
-            describe: 'package path to upload',
-            type: 'string'
-        }
     },
     handler: function(argv){
-        server(argv.url, argv.user, argv.pass, argv.pkg, argv.ver, argv.type, argv.upload=false, argv.file='');
+        const oc = new ocloud.Client(argv.url, argv.user, argv.pass);
+        oc.search(argv.pkg).then(data => {console.log(data)}).catch(e => console.error(e));
     }
-})
+});
 
 yargs.command({
-    command: 'client',
-    describe: 'execute as client role, you can download and search packages',
+    command: 'searchpkg',
+    describe: 'search specific pkg',
+    alias: 'e',
     builder: {
         url: {
             describe: 'owncloud webdav url',
@@ -73,53 +47,168 @@ yargs.command({
             type: 'string'
         },
         user: {
-            describe: 'owncloud client username',
+            describe: 'owncloud server username',
             demandOption: true,
             type: 'string'
         },
         pass: {
-            describe: 'owncloud client password(app password)',
+            describe: 'owncloud server password(app password)',
             demandOption: true,
             type: 'string'
         },
         pkg: {
-            decribe: 'package name',
+            describe: 'package name',
             demandOption: true,
             type: 'string'
         },
         ver: {
             describe: 'package version',
+            demandOption: true,
             type: 'string'
         },
         type: {
             describe: 'package type(Docker, Singularity, OCI, LPMX)',
+            demandOption: true,
             type: 'string'
         },
-        download: {
-            describe: 'download the package?',
-            type: 'boolean'
-        },
-        file: {
-            describe: 'target path',
-            type: 'string'
-        }
     },
     handler: function(argv){
-        client(argv.url, argv.user, argv.pass, argv.pkg, argv.ver, argv.type, argv.download=false, argv.file='');
+        const oc = new ocloud.Client(argv.url, argv.user, argv.pass);
+        oc.searchpkg(argv.pkg, argv.ver, argv.type).then(data => {console.log(data)}).catch(e => console.error(e));
     }
-})
+});
 
+yargs.command({
+    command: 'download',
+    describe: 'download pkg',
+    builder: {
+        url: {
+            describe: 'owncloud webdav url',
+            demandOption: true,
+            type: 'string'
+        },
+        user: {
+            describe: 'owncloud server username',
+            demandOption: true,
+            type: 'string'
+        },
+        pass: {
+            describe: 'owncloud server password(app password)',
+            demandOption: true,
+            type: 'string'
+        },
+        pkg: {
+            describe: 'package name',
+            demandOption: true,
+            type: 'string'
+        },
+        ver: {
+            describe: 'package version',
+            demandOption: true,
+            type: 'string'
+        },
+        type: {
+            describe: 'package type(Docker, Singularity, OCI, LPMX)',
+            demandOption: true,
+            type: 'string'
+        },
+        location: {
+            describe: 'where you want to download the package',
+            demandOption: true,
+            type: 'string'
+        },
+    },
+    handler: function(argv){
+        const oc = new ocloud.Client(argv.url, argv.user, argv.pass);
+        oc.download(argv.pkg, argv.ver, argv.type, argv.location).then(data => {console.log(data)}).catch(e => console.error(e));
+    }
+});
 
-//yargs.parse();
-//client:
-//FLRTB-FCRRP-PAKFS-VVTYL
+yargs.command({
+    command: 'upload',
+    describe: 'upload pkg',
+    builder: {
+        url: {
+            describe: 'owncloud webdav url',
+            demandOption: true,
+            type: 'string'
+        },
+        user: {
+            describe: 'owncloud username',
+            demandOption: true,
+            type: 'string'
+        },
+        pass: {
+            describe: 'owncloud server password(app password)',
+            demandOption: true,
+            type: 'string'
+        },
+        pkg: {
+            describe: 'package name',
+            demandOption: true,
+            type: 'string'
+        },
+        ver: {
+            describe: 'package version',
+            demandOption: true,
+            type: 'string'
+        },
+        type: {
+            describe: 'package type(Docker, Singularity, OCI, LPMX)',
+            demandOption: true,
+            type: 'string'
+        },
+        location: {
+            describe: 'where you want to download the package',
+            demandOption: true,
+            type: 'string'
+        },
+    },
+    handler: function(argv){
+        const os = new ocloud.Server(argv.url, argv.user, argv.pass);
+        os.uploadpkg(argv.pkg, argv.ver, argv.type, argv.location);
+    }
+});
 
-//server:
-//SUNIZ-QCGJF-FRLJX-BINXT
-//const os = new ocloud.Server("http://192.168.0.199/remote.php/dav/files/admin/", "admin", "SUNIZ-QCGJF-FRLJX-BINXT");
-//os.uploadpkg('test.docx', '0.1','docker', './test.docx');
+yargs.command({
+    command: 'delete',
+    describe: 'delete pkg',
+    builder: {
+        url: {
+            describe: 'owncloud webdav url',
+            demandOption: true,
+            type: 'string'
+        },
+        user: {
+            describe: 'owncloud server username',
+            demandOption: true,
+            type: 'string'
+        },
+        pass: {
+            describe: 'owncloud server password(app password)',
+            demandOption: true,
+            type: 'string'
+        },
+        pkg: {
+            describe: 'package name',
+            demandOption: true,
+            type: 'string'
+        },
+        ver: {
+            describe: 'package version',
+            demandOption: true,
+            type: 'string'
+        },
+        type: {
+            describe: 'package type(Docker, Singularity, OCI, LPMX)',
+            demandOption: true,
+            type: 'string'
+        },
+    },
+    handler: function(argv){
+        const os = new ocloud.Server(argv.url, argv.user, argv.pass);
+        os.deletepkg(argv.pkg, argv.ver, argv.type);
+    }
+});
 
-const oc= new ocloud.Client("http://192.168.0.199/remote.php/dav/files/user/", "user", "FLRTB-FCRRP-PAKFS-VVTYL");
-//oc.search('test.docx').then(data => {console.log(data)});
-//oc.searchpkg('test.docx','0.1','docker').then(data => {console.log(data)});
-oc.download('test.docx','0.1','docker','./file').then(data => console.log(data));
+yargs.parse();
