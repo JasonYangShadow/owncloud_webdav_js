@@ -2,10 +2,11 @@ const md5file = require('md5-file');
 const fs = require('fs');
 
 class DataObject{
-    constructor(name, version){
+    constructor(name, version, type){
         this._name = name;
         this._version = version;
-        this._timestamp = Date.now()
+        this._type = type;
+        this._timestamp = Date.now();
     }
 
     set path(path){
@@ -30,6 +31,10 @@ class DataObject{
 
     get md5(){
         return this._md5;
+    }
+
+    get type(){
+        return this._type;
     }
 
     calmd5(){
