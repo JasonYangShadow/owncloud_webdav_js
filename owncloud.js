@@ -130,20 +130,23 @@ class Server extends OwnCloud{
         })
     }
 
-    deletepkg(pkg, version, type){
-        try{
-            this._db.find(pkg, version, type).then(data =>{
-                this._db.delete(pkg, version, type).catch(e => {throw e});
-                const path = this.genpath(prefix, pkg, version, type);
-                this.delete(path).catch(e => {throw e});
-            });
-            fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, {overwrite: true}));
-        }catch(e){
-            throw e;
-        }
+    async deletepkg(pkg, version, type){
+        return new Promise((resolve, reject) => {
+            try{
+                this._db.find(pkg, version, type).then(data =>{
+                    this._db.delete(pkg, version, type).catch(e => {throw e});
+                    const path = this.genpath(prefix, pkg, version, type);
+                    this.delete(path).catch(e => {throw e});
+                });
+                fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, {overwrite: true}));
+                resolve(`delete pkg: ${pkg}, version: ${version}, type: ${type} successfully from server`);
+            }catch(e){
+                reject(`error occurs when deleting package: ${pkg} on server: ${e}`);
+            }
+        });
     }
 
-    uploadpkg(pkg, version, type, file){
+    async uploadpkg(pkg, version, type, file){
         if(!fs.existsSync(file)){
             throw new Error(`file: ${file} does not exist`);
         }
@@ -155,28 +158,33 @@ class Server extends OwnCloud{
             ob.md5 = data
         }).catch(e => {throw e});
 
-        try{
-            const path = this.genpath(prefix, pkg, version, type);
-            //create a parant list for looping
-            const dirlist = []
-            const dirpaths = path.split('/');
-            dirpaths.shift();
-            while(dirpaths.length > 1){
-                dirlist.push((dirlist[dirlist.length - 1] || '') + '/' + dirpaths.shift());
-            }
-            //create parant dir
-            this.createDirifNotExist(dirlist).then(data =>{
-                //upload package
-                fs.createReadStream(file).pipe(this._wd.createWriteStream(path));
-            }).catch(e => {throw e});
+        return new Promise((resolve, reject) =>{
+            try{
+                const path = this.genpath(prefix, pkg, version, type);
+                //create a parant list for looping
+                const dirlist = []
+                const dirpaths = path.split('/');
+                dirpaths.shift();
+                while(dirpaths.length > 1){
+                    dirlist.push((dirlist[dirlist.length - 1] || '') + '/' + dirpaths.shift());
+                }
+                //create parant dir
+                this.createDirifNotExist(dirlist).then(data =>{
+                    //upload package
+                    fs.createReadStream(file).pipe(this._wd.createWriteStream(path));
+                }).catch(e => {throw e});
 
-            //upload db file
-            this._db.save(ob).then(data =>{
-                fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, {overwrite: true}));
-            }).catch(e => {throw e});
-        }catch(e){
-            throw e;
-        }
+                //upload db file
+                this._db.save(ob).then(data =>{
+                    fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, {overwrite: true}));
+                }).catch(e => {throw e});
+
+                resolve(`upload pkg: ${pkg} to the server finished`);
+            }catch(e){
+                reject(`error occurs when uploading pkg: ${e}`);
+            }
+        });
+        
     }
 
     async createDirifNotExist(paths){

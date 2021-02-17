@@ -166,7 +166,9 @@ yargs.command({
     },
     handler: function(argv){
         const os = new ocloud.Server(argv.url, argv.user, argv.pass);
-        os.uploadpkg(argv.pkg, argv.ver, argv.type, argv.location);
+        os.uploadpkg(argv.pkg, argv.ver, argv.type, argv.location).then(data => {console.log(data)}).catch(e =>{
+            console.error(e);
+        })
     }
 });
 
@@ -207,7 +209,9 @@ yargs.command({
     },
     handler: function(argv){
         const os = new ocloud.Server(argv.url, argv.user, argv.pass);
-        os.deletepkg(argv.pkg, argv.ver, argv.type);
+        os.deletepkg(argv.pkg, argv.ver, argv.type).then(data => {console.log(data)}).catch(e =>{
+            console.error(e);
+        })
     }
 });
 
