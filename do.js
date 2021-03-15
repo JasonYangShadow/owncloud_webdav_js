@@ -3,14 +3,18 @@ const fs = require('fs');
 
 class DataObject{
     constructor(name, version, type){
-        this._name = name;
-        this._version = version;
-        this._type = type;
+        this._name = name.toLowerCase();
+        this._version = version.toLowerCase();
+        this._type = type.toLowerCase();
         this._timestamp = Date.now();
     }
 
     set md5(md5){
         this._md5 = md5;
+    }
+
+    set filesize(filesize){
+        this._filesize = filesize;
     }
 
     get name(){
@@ -23,6 +27,10 @@ class DataObject{
 
     get md5(){
         return this._md5;
+    }
+
+    get filesize(){
+        return this._filesize;
     }
 
     get type(){

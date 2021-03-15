@@ -34,7 +34,7 @@ yargs.command({
         const oc = new ocloud.Client(argv.url, argv.user, argv.pass);
         oc.search(argv.pkg).then(data => {console.log(data)}).catch(e => console.error(e));
     }
-});
+}).usage('search usage: --url=webdav_url --user=user_name --pass=app_password --pkg=package_name [Note: you can use both client/server account]');
 
 yargs.command({
     command: 'searchpkg',
@@ -76,7 +76,7 @@ yargs.command({
         const oc = new ocloud.Client(argv.url, argv.user, argv.pass);
         oc.searchpkg(argv.pkg, argv.ver, argv.type).then(data => {console.log(data)}).catch(e => console.error(e));
     }
-});
+}).usage('searchpkg usage: --url=webdav_url --user=user_name --pass=app_password --pkg=package_name --ver=package_version --type=package_type(Singularity, LPMX, Docker, OCI) [Note: you can use both client/server account]');
 
 yargs.command({
     command: 'download',
@@ -122,7 +122,7 @@ yargs.command({
         const oc = new ocloud.Client(argv.url, argv.user, argv.pass);
         oc.download(argv.pkg, argv.ver, argv.type, argv.location).then(data => {console.log(data)}).catch(e => console.error(e));
     }
-});
+}).usage('download usage: --url=wevdav_url --user=user_name --pass=app_password --pkg=package_name --ver=package_version --type=package_type(Singularity, LPMX, Docker, OCI) --location=path_to_write_downloaded_file [Note: you can use both client/server account]');
 
 yargs.command({
     command: 'upload',
@@ -159,7 +159,7 @@ yargs.command({
             type: 'string'
         },
         location: {
-            describe: 'where you want to download the package',
+            describe: 'where is the local file',
             demandOption: true,
             type: 'string'
         },
@@ -170,7 +170,7 @@ yargs.command({
             console.error(e);
         })
     }
-});
+}).usage('upload usage: --url=webdav_url --user=user_name --pass=app_password --pkg=package_name --ver=package_version --type=package_type(Docker,Singularity,OCI,LPMX) --location=path_to_read_file_for_upload [Note: you have to use server account]');
 
 yargs.command({
     command: 'delete',
@@ -213,6 +213,6 @@ yargs.command({
             console.error(e);
         })
     }
-});
+}).usage('delete usage: --url=webdav_url --user=user_name --pass=app_password --pkg=package_name --ver=package_version --type=package_type(Docker,Singularity,OCI,LPMX) [Note: you have to use admin account]');
 
 yargs.parse();
