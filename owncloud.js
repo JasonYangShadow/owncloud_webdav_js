@@ -18,6 +18,21 @@ class OwnCloud {
         });
     }
 
+    async init() {
+        return new Promise((resolve, reject) => {
+            (async () => {
+                if (await this.exists(`${remotedb}`)) {
+                    await this.asyncdownload(`${remotedb}`, `${nedb}`);
+                    this._db = new dbase.DataBase(`${nedb}`);
+                    resolve();
+                } else {
+                    this._db = new dbase.DataBase(`${nedb}`);
+                    reject(`remote db: ${remotedb} does not exist, you can not search or download images`);
+                }
+            })();
+        });
+    }
+
     async getDir(path) {
         const content = await this._wd.getDirectoryContents("/");
         return await this._wd.getDirectoryContents(path).then(data => {
@@ -64,6 +79,7 @@ class OwnCloud {
         pkg = pkg.toLowerCase();
         version = version.toLowerCase();
         type = type.toLowerCase();
+
         if (prefix && prefix[0] === '/') {
             return fpath.posix.join(prefix, type, pkg, version, 'image');
         } else if (prefix && prefix[0] !== '/') {
@@ -76,27 +92,38 @@ class OwnCloud {
 class Client extends OwnCloud {
     constructor(url, name, pass) {
         super(url, name, pass);
-
-        this.exists(`${remotedb}`).then(data => {
-            if (data) {
-                this.asyncdownload(`${remotedb}`, `${nedb}`).catch(e => { throw e });
-            }
-        }).catch(e => { throw e });
-
-        this._db = new dbase.DataBase(`${nedb}`);
     }
 
     async search(pkg) {
+        await this.init();
+
+        pkg = pkg.toLowerCase();
+
         return await this._db.findall(pkg);
     }
 
     async searchpkg(pkg, version, type) {
+        await this.init();
+
+        pkg = pkg.toLowerCase();
+        version = version.toLowerCase();
+        type = type.toLowerCase();
+
         return await this._db.find(pkg, version, type);
     }
 
     async download(pkg, version, type, location) {
+        await this.init();
+
+        pkg = pkg.toLowerCase();
+        version = version.toLowerCase();
+        type = type.toLowerCase();
+
         try {
             var record = await this._db.find(pkg, version, type);
+            if (record === null) {
+                throw Error(`pkg:${pkg}, version:${version}, type:${type} does not exist`);
+            }
             const md5 = record._md5;
             const path = this.genpath(prefix, pkg, version, type);
             return new Promise((resolve, reject) => {
@@ -130,51 +157,34 @@ class Client extends OwnCloud {
 class Server extends OwnCloud {
     constructor(url, name, pass) {
         super(url, name, pass);
-
-        this.exists(`${remotedb}`).then(data => {
-            if (data) {
-                this.asyncdownload(`${remotedb}`, `${nedb}`).catch(e => { throw e });
-            }
-        }).catch(e => { throw e });
-
-        if (fs.existsSync(`${nedb}`) === false) {
-            //create file
-            fs.open(`${nedb}`, 'w', function (err, fd) {
-                if (err) throw err;
-                fs.close(fd, (e) => {
-                    if (e) {
-                        throw e;
-                    }
-                });
-            });
-        }
-        this._db = new dbase.DataBase(`${nedb}`);
-    }
-
-    async delete(path) {
-        if (await this.exists(path)) {
-            return await this._wd.deleteFile(path).then(data => { return data }).catch(err => {
-                throw new Error(err);
-            })
-        }
     }
 
     async deletepkg(pkg, version, type) {
+        await this.init();
+        pkg = pkg.toLowerCase();
+        version = version.toLowerCase();
+        type = type.toLowerCase();
+
         return new Promise((resolve, reject) => {
-            try {
-                this._db.find(pkg, version, type).then(data => {
-                    this._db.delete(pkg, version, type).catch(e => { throw e });
+            (async () => {
+                let num = await this._db.delete(pkg, version, type).catch(() => { });
+                if (num > 0) {
                     const path = this.genpath(prefix, pkg, version, type);
-                    this.delete(path);
-                });
-                fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, { overwrite: true })).on('finish', () => { resolve(`delete pkg: ${pkg}, version: ${version}, type: ${type} successfully from server`) }).on('error', (err) => { reject(err); })
-            } catch (e) {
-                reject(`error occurs when deleting package: ${pkg} on server: ${e}`);
-            }
+                    await this._wd.deleteFile(path).catch(() => { });
+                    fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, { overwrite: true })).on('finish', resolve(`delete pkg: ${pkg}, version: ${version}, type: ${type} sucessfully from server`)).on('error', err => { reject(err) });
+                }
+                resolve(`no need to delete pkg: ${pkg}, version: ${version}, type: ${type}`);
+            })().catch(() => { });
         });
     }
 
     async uploadpkg(pkg, version, type, file) {
+        pkg = pkg.toLowerCase();
+        version = version.toLowerCase();
+        type = type.toLowerCase();
+        file = file.toLowerCase();
+
+        await this.init().catch(() => { });
         if (!fs.existsSync(file)) {
             throw new Error(`file: ${file} does not exist`);
         }
@@ -199,18 +209,19 @@ class Server extends OwnCloud {
                 while (dirpaths.length > 1) {
                     dirlist.push((dirlist[dirlist.length - 1] || '') + '/' + dirpaths.shift());
                 }
-                //create parant dir
-                this.createDirifNotExist(dirlist).then(data => {
+                (async () => {
+                    //create parant dir
+                    await this.createDirifNotExist(dirlist);
+
                     //upload package
-                    fs.createReadStream(file).pipe(this._wd.createWriteStream(path));
-                }).catch(e => { throw e });
-
-                //upload db file
-                this._db.save(ob).then(data => {
-                    fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, { overwrite: true }));
-                }).catch(e => { throw e });
-
-                resolve(`upload pkg: ${pkg} to the server finished`);
+                    fs.createReadStream(file).pipe(this._wd.createWriteStream(path)).on('finish', () => {
+                        (async () => {
+                            await this._db.save(ob).then(data => {
+                                fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, { overwrite: true })).on('error', err => { reject(err) });
+                            });
+                        })();
+                    }).on('error', err => { reject(err) }).on('finish', resolve(`upload pkg: ${pkg} to the server finished`));
+                })().catch(() => { });
             } catch (e) {
                 reject(`error occurs when uploading pkg: ${e}`);
             }
@@ -219,13 +230,18 @@ class Server extends OwnCloud {
     }
 
     async createDirifNotExist(paths) {
-        for (let i = 0; i < paths.length; i++) {
-            if (await this._wd.exists(paths[i]) === false) {
-                await this._wd.createDirectory(paths[i]).catch(e => {
-                    throw e;
-                })
-            }
-        }
+        return new Promise((resolve, reject) => {
+            (async () => {
+                for (let i = 0; i < paths.length; i++) {
+                    if (await this._wd.exists(paths[i]) === false) {
+                        await this._wd.createDirectory(paths[i]).catch(e => {
+                            reject(e);
+                        });
+                    }
+                }
+                resolve();
+            })();
+        });
     }
 }
 
