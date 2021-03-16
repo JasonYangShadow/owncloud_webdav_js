@@ -170,11 +170,17 @@ class Server extends OwnCloud {
                 let num = await this._db.delete(pkg, version, type).catch(() => { });
                 if (num > 0) {
                     const path = this.genpath(prefix, pkg, version, type);
-                    await this._wd.deleteFile(path).catch(() => { });
+                    await this._wd.deleteFile(path).catch((err) => { throw err});
                     fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, { overwrite: true })).on('finish', resolve(`delete pkg: ${pkg}, version: ${version}, type: ${type} sucessfully from server`)).on('error', err => { reject(err) });
                 }
                 resolve(`no need to delete pkg: ${pkg}, version: ${version}, type: ${type}`);
-            })().catch(() => { });
+            })().catch((err) => { 
+                if(err.response){
+                    reject(err.response.data);
+                }else{
+                    reject(err);
+                }
+             });
         });
     }
 
@@ -220,8 +226,14 @@ class Server extends OwnCloud {
                                 fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, { overwrite: true })).on('error', err => { reject(err) });
                             });
                         })();
-                    }).on('error', err => { reject(err) }).on('finish', resolve(`upload pkg: ${pkg} to the server finished`));
-                })().catch(() => { });
+                    }).on('error', err => { throw err }).on('finish', resolve(`upload pkg: ${pkg} to the server finished`));
+                })().catch((err) => {
+                    if(err.response){
+                        reject(err.response.data);
+                    }else{
+                        reject(err);
+                    }
+                 });
             } catch (e) {
                 reject(`error occurs when uploading pkg: ${e}`);
             }
