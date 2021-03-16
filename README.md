@@ -1,10 +1,19 @@
 # owncloud_webdav_js
-A nodejs module for accessing owncloud instance via webdav protocol
+A nodejs module for accessing owncloud instance via webdav protocol, you can search, upload, and download packages from owncloud using pure js
 
-Example:
+To manage the existing packages on owncloud, this module employs nedb to save all manipulations. The package related info includes 'package name', 'package version', 'package type'
 
+You have to provide the url address of owncloud instance, user name, as well as app password for the user to complete the request.
+
+you can install the core compoenents by:
+
+```js
+npm i owncloud_webdav_js
+```
+
+Examples:
 1. search pkg
-```javascript
+```js
 //require owncloud
 const ocloud= require('owncloud');
 //initialize client with url, user, pass(app pass)
@@ -14,7 +23,7 @@ oc.search(pkg).then(data => {console.log(data)}).catch(e => console.error(e));
 ```
 
 2. search specific pkg
-```javascript
+```js
 //require owncloud
 const ocloud= require('owncloud');
 //initialize client with url, user, pass(app pass)
@@ -24,7 +33,7 @@ oc.searchpkg(pkg, ver, type).then(data => {console.log(data)}).catch(e => consol
 ```
 
 3. download pkg
-```javascript
+```js
 //require owncloud
 const ocloud= require('owncloud');
 //initialize client with url, user, pass(app pass)
@@ -34,7 +43,7 @@ oc.download(pkg, ver, type, location).then(data => {console.log(data)}).catch(e 
 ```
 
 4. upload pkg
-```javascript
+```js
 //require owncloud
 const ocloud= require('owncloud');
 //initialize server with url, user, pass(app pass)
@@ -46,7 +55,7 @@ os.uploadpkg(pkg, ver, type, location).then(data => {console.log(data)}).catch(e
 ```
 
 5. delete pkg 
-```javascript
+```js
 //require owncloud
 const ocloud= require('owncloud');
 //initialize server with url, user, pass(app pass)
@@ -55,4 +64,15 @@ const os = new ocloud.Server(url, user, pass);
 os.deletepkg(pkg, ver, type).then(data => {console.log(data)}).catch(e =>{
     console.error(e);
 });
+```
+
+The app.js file inside this repository provides a basic CLI program for accessing these features. You can directly call the program with the following commands:
+
+For example:
+```js
+node app.js search --url=url --user=user --pass=password --pkg=package_name
+```
+For details, you can use help commands:
+```js
+node app.js --help
 ```
