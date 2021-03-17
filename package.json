@@ -22,8 +22,10 @@
   },
   "homepage": "https://github.com/JasonYangShadow/owncloud_webdav_js#readme",
   "dependencies": {
+    "console-table-printer": "^2.8.1",
     "md5-file": "^5.0.0",
     "nedb": "^1.8.0",
+    "properties-reader": "^2.2.0",
     "webdav": "^4.0.0",
     "yargs": "^16.2.0"
   }

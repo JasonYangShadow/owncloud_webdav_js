@@ -37,6 +37,14 @@ class DataObject{
         return this._type;
     }
 
+    get ref(){
+        return this._ref;
+    }
+
+    set ref(ref){
+        this._ref = ref;
+    }
+
     calmd5(path){
         return new Promise((resolve, reject) =>{
             if(path && fs.existsSync(path)){

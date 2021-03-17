@@ -8,7 +8,8 @@ const { resolve } = require('path');
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 const prefix = '/share';
 const nedb = 'nedb';
-const remotedb = `${prefix}/dbfile`;
+const pr = require('properties-reader');
+const filepath = './config.ini'
 
 class OwnCloud {
     constructor(url, name, pass) {
@@ -21,13 +22,20 @@ class OwnCloud {
     async init() {
         return new Promise((resolve, reject) => {
             (async () => {
-                if (await this.exists(`${remotedb}`)) {
-                    await this.asyncdownload(`${remotedb}`, `${nedb}`);
+                const props = await readconfig().catch(e => reject(e));
+                if(props.share){
+                    this._remotedb = `/${props.share}/dbfile`;
+                }else{
+                    this._remotedb = `${prefix}/dbfile`;
+                }
+
+                if (await this.exists(this._remotedb)) {
+                    await this.asyncdownload(this._remotedb, `${nedb}`);
                     this._db = new dbase.DataBase(`${nedb}`);
                     resolve();
                 } else {
                     this._db = new dbase.DataBase(`${nedb}`);
-                    reject(`remote db: ${remotedb} does not exist, you can not search or download images`);
+                    reject(`remote db: ${this._remotedb} does not exist, you can not search or download images`);
                 }
             })();
         });
@@ -74,19 +82,29 @@ class OwnCloud {
         })
     }
 
-    genpath(prefix, pkg, version, type) {
-        prefix = prefix.toLowerCase();
-        pkg = pkg.toLowerCase();
-        version = version.toLowerCase();
-        type = type.toLowerCase();
+    async asyncgenpath(prefix, pkg, version, type) {
+        return new Promise((resolve, reject) => {
+            (async () => {
+                const props = await readconfig().catch(e => { throw e });
+                if (props.share) {
+                    prefix = props.share.toLowerCase();
+                } else {
+                    prefix = prefix.toLowerCase();
+                }
+                pkg = pkg.toLowerCase();
+                version = version.toLowerCase();
+                type = type.toLowerCase();
 
-        if (prefix && prefix[0] === '/') {
-            return fpath.posix.join(prefix, type, pkg, version, 'image');
-        } else if (prefix && prefix[0] !== '/') {
-            return fpath.posix.join('/', prefix, type, pkg, version, 'image');
-        }
-        throw new Error(`could not genpath, the prefix: ${prefix} is invalid`);
-    }
+                if (prefix && prefix[0] === '/') {
+                    resolve(fpath.posix.join(prefix, type, pkg, version, 'image'));
+                } else if (prefix && prefix[0] !== '/') {
+                    resolve(fpath.posix.join('/', prefix, type, pkg, version, 'image'));
+                }
+                reject(`could not genpath, the prefix: ${prefix} is invalid`);
+            })().catch(e => reject(e));
+        });
+    };
+
 }
 
 class Client extends OwnCloud {
@@ -112,6 +130,18 @@ class Client extends OwnCloud {
         return await this._db.find(pkg, version, type);
     }
 
+    async searchregx(pkg, version, type, op) {
+        await this.init();
+
+        pkg = pkg.toLowerCase();
+        version = version.toLowerCase();
+        if (type) {
+            type = type.toLowerCase();
+        }
+
+        return await this._db.findregx(pkg, version, type, op);
+    }
+
     async download(pkg, version, type, location) {
         await this.init();
 
@@ -125,7 +155,7 @@ class Client extends OwnCloud {
                 throw Error(`pkg:${pkg}, version:${version}, type:${type} does not exist`);
             }
             const md5 = record._md5;
-            const path = this.genpath(prefix, pkg, version, type);
+            const path = record._ref;
             return new Promise((resolve, reject) => {
                 try {
                     this.asyncdownload(path, location).then(_ => {
@@ -167,20 +197,23 @@ class Server extends OwnCloud {
 
         return new Promise((resolve, reject) => {
             (async () => {
-                let num = await this._db.delete(pkg, version, type).catch(() => { });
-                if (num > 0) {
-                    const path = this.genpath(prefix, pkg, version, type);
-                    await this._wd.deleteFile(path).catch((err) => { throw err});
-                    fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, { overwrite: true })).on('finish', resolve(`delete pkg: ${pkg}, version: ${version}, type: ${type} sucessfully from server`)).on('error', err => { reject(err) });
+                const record = await this._db.find(pkg, version, type).catch(() => { });
+                if (record) {
+                    const path = record._ref;
+                    const num = await this._db.delete(pkg, version, type).catch(() => { });
+                    if (num > 0) {
+                        await this._wd.deleteFile(path).catch((err) => { throw err });
+                        fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(this._remotedb, { overwrite: true })).on('finish', resolve(`delete pkg: ${pkg}, version: ${version}, type: ${type} sucessfully from server`)).on('error', err => { reject(err) });
+                    }
                 }
                 resolve(`no need to delete pkg: ${pkg}, version: ${version}, type: ${type}`);
-            })().catch((err) => { 
-                if(err.response){
+            })().catch((err) => {
+                if (err.response) {
                     reject(err.response.data);
-                }else{
+                } else {
                     reject(err);
                 }
-             });
+            });
         });
     }
 
@@ -206,8 +239,10 @@ class Server extends OwnCloud {
         ob.filesize = stats.size;
 
         return new Promise((resolve, reject) => {
-            try {
-                const path = this.genpath(prefix, pkg, version, type);
+            (async () => {
+                const path = await this.asyncgenpath(prefix, pkg, version, type).catch(e => { reject(e) });
+
+                ob.ref = path;
                 //create a parant list for looping
                 const dirlist = []
                 const dirpaths = path.split('/');
@@ -215,28 +250,24 @@ class Server extends OwnCloud {
                 while (dirpaths.length > 1) {
                     dirlist.push((dirlist[dirlist.length - 1] || '') + '/' + dirpaths.shift());
                 }
-                (async () => {
-                    //create parant dir
-                    await this.createDirifNotExist(dirlist);
+                //create parant dir
+                await this.createDirifNotExist(dirlist);
 
-                    //upload package
-                    fs.createReadStream(file).pipe(this._wd.createWriteStream(path)).on('finish', () => {
-                        (async () => {
-                            await this._db.save(ob).then(data => {
-                                fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(`${remotedb}`, { overwrite: true })).on('error', err => { reject(err) });
-                            });
-                        })();
-                    }).on('error', err => { throw err }).on('finish', resolve(`upload pkg: ${pkg} to the server finished`));
-                })().catch((err) => {
-                    if(err.response){
-                        reject(err.response.data);
-                    }else{
-                        reject(err);
-                    }
-                 });
-            } catch (e) {
-                reject(`error occurs when uploading pkg: ${e}`);
-            }
+                //upload package
+                fs.createReadStream(file).pipe(this._wd.createWriteStream(path)).on('finish', () => {
+                    (async () => {
+                        await this._db.save(ob).then(data => {
+                            fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(this._remotedb, { overwrite: true })).on('error', err => { reject(err) });
+                        });
+                    })();
+                }).on('error', err => { throw err }).on('finish', resolve(`upload pkg: ${pkg} to the server finished`));
+            })().catch((err) => {
+                if (err.response) {
+                    reject(err.response.data);
+                } else {
+                    reject(err);
+                }
+            });
         });
 
     }
@@ -257,7 +288,33 @@ class Server extends OwnCloud {
     }
 }
 
+async function readconfig() {
+    return new Promise((resolve, reject) => {
+        if (!fs.existsSync(filepath)) {
+            reject(`config file ${filepath} does not exist`);
+        }
+
+        const props = pr(filepath);
+        let url = props.get('config.account.url');
+        if (!url) {
+            reject(`could not read config.account.url property from ${filepath}`);
+        }
+        let user = props.get('config.account.user');
+        if (!user) {
+            reject(`could not read config.account.user property from ${filepath}`);
+        }
+        let pass = props.get('config.account.pass');
+        if (!user) {
+            reject(`could not read config.account.pass property from ${filepath}`);
+        }
+        let share = props.get('owncloud.share.prefix');
+
+        resolve({ 'url': url, 'user': user, 'pass': pass, 'share': share });
+    });
+};
+
 module.exports = {
     Client,
-    Server
+    Server,
+    readconfig
 }
