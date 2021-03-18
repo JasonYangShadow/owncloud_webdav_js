@@ -26,7 +26,7 @@ function retTable(){
     });
 };
 
-yargs.version('0.0.1');
+yargs.version('1.0.3');
 yargs.command({
     command: 'init',
     describe: 'initialize the project',
@@ -340,6 +340,11 @@ yargs.command({
             demandOption: true,
             type: 'string'
         },
+        overwrite:{
+            describe: 'overwrite existing record?(true -> yes, false -> create new)',
+            demandOption: false,
+            type: 'boolean'
+        },
     },
     handler: function (argv) {
         (async () => {
@@ -352,7 +357,7 @@ yargs.command({
 
             if (argv.url && argv.user && argv.pass) {
                 const os = new ocloud.Server(argv.url, argv.user, argv.pass);
-                os.uploadpkg(argv.pkg, argv.ver, argv.type, argv.location).then(data => { console.log(data) }).catch(e => {
+                os.uploadpkg(argv.pkg, argv.ver, argv.type, argv.location, argv.overwrite).then(data => { console.log(data) }).catch(e => {
                     console.error(e);
                 })
             } else {

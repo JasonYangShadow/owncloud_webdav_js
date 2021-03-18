@@ -217,13 +217,15 @@ class Server extends OwnCloud {
         });
     }
 
-    async uploadpkg(pkg, version, type, file) {
+    async uploadpkg(pkg, version, type, file, overwrite) {
         pkg = pkg.toLowerCase();
         version = version.toLowerCase();
         type = type.toLowerCase();
         file = file.toLowerCase();
 
-        await this.init().catch(() => { });
+        //ignore the init error, because we need to create and upload nedb
+        await this.init().catch(() => {});
+
         if (!fs.existsSync(file)) {
             throw new Error(`file: ${file} does not exist`);
         }
@@ -231,16 +233,19 @@ class Server extends OwnCloud {
         //create dobject
         const ob = new dobject.DataObject(pkg, version, type);
         file = fpath.resolve(file);
-        ob.calmd5(file).then(data => {
+        await ob.calmd5(file).then(data => {
             ob.md5 = data
         }).catch(e => { throw e });
 
         let stats = fs.statSync(file);
         ob.filesize = stats.size;
 
+        const thisp = this;
+
         return new Promise((resolve, reject) => {
             (async () => {
-                const path = await this.asyncgenpath(prefix, pkg, version, type).catch(e => { reject(e) });
+                //normal upload procedure
+                const path = await thisp.asyncgenpath(prefix, pkg, version, type).catch(e => { reject(e) });
 
                 ob.ref = path;
                 //create a parant list for looping
@@ -250,26 +255,35 @@ class Server extends OwnCloud {
                 while (dirpaths.length > 1) {
                     dirlist.push((dirlist[dirlist.length - 1] || '') + '/' + dirpaths.shift());
                 }
-                //create parant dir
-                await this.createDirifNotExist(dirlist);
+                //go saving to nedb first
+                await thisp._db.save(ob, overwrite).then(ret => {
+                   //create parent dir 
+                   if(ret){
+                       //means that we need to upload image
+                       (async() =>{
+                            //create parant dir
+                            await thisp.createDirifNotExist(dirlist);
 
-                //upload package
-                fs.createReadStream(file).pipe(this._wd.createWriteStream(path)).on('finish', () => {
-                    (async () => {
-                        await this._db.save(ob).then(data => {
-                            fs.createReadStream(`${nedb}`).pipe(this._wd.createWriteStream(this._remotedb, { overwrite: true })).on('error', err => { reject(err) });
-                        });
-                    })();
-                }).on('error', err => { throw err }).on('finish', resolve(`upload pkg: ${pkg} to the server finished`));
+                            //upload package
+                            fs.createReadStream(file).pipe(thisp._wd.createWriteStream(path)).on('finish', () =>{
+                                //upload nedb
+                                fs.createReadStream(`${nedb}`).pipe(thisp._wd.createWriteStream(thisp._remotedb, {overwrite: true})).on('error', err=>{throw err});
+                            }).on('error', err => {throw err});
+                       })().catch(e => {throw e});
+                   }else{
+                        //means that we only need to upload the nedb
+                        fs.createReadStream(`${nedb}`).pipe(thisp._wd.createWriteStream(thisp._remotedb, {overwrite: true})).on('error', err=>{throw err});
+                   }
+                }).catch(e => {throw e});
+
             })().catch((err) => {
                 if (err.response) {
                     reject(err.response.data);
                 } else {
                     reject(err);
                 }
-            });
+            }).then(() => {resolve(`successfully upload package: ${pkg}, version: ${version}, type: ${type}, file: ${file}  to the server`)});
         });
-
     }
 
     async createDirifNotExist(paths) {
