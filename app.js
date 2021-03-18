@@ -26,7 +26,7 @@ function retTable(){
     });
 };
 
-yargs.version('1.0.3');
+yargs.version('1.0.4');
 yargs.command({
     command: 'init',
     describe: 'initialize the project',
@@ -172,8 +172,8 @@ yargs.command({
 }).usage('searchpkg usage: --url=webdav_url --user=user_name --pass=app_password --pkg=package_name --ver=package_version --type=package_type(Singularity, LPMX, Docker, OCI) [Note: you can use both client/server account]');
 
 yargs.command({
-    command: 'searchregx',
-    describe: 'search package with regx',
+    command: 'searchcond',
+    describe: 'search package with condition',
     builder: {
         url: {
             describe: 'owncloud webdav url',

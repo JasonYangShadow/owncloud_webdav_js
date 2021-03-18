@@ -32,7 +32,17 @@ const oc = new ocloud.Client(url, user, pass);
 oc.searchpkg(pkg, ver, type).then(data => {console.log(data)}).catch(e => console.error(e));
 ```
 
-3. download pkg
+3. search pkg with condition
+```js
+//require owncloud
+const ocloud= require('owncloud');
+//initialize client with url, user, pass(app pass)
+const oc = new ocloud.Client(url, user, pass);
+//initialize client with url, user, pass(app pass)
+oc.searchregx(pkg, ver, type, op).then(data => {console.log(data)}).catch(e => console.error(e));
+```
+
+4. download pkg
 ```js
 //require owncloud
 const ocloud= require('owncloud');
@@ -42,19 +52,19 @@ const oc = new ocloud.Client(url, user, pass);
 oc.download(pkg, ver, type, location).then(data => {console.log(data)}).catch(e => console.error(e));
 ```
 
-4. upload pkg
+5. upload pkg
 ```js
 //require owncloud
 const ocloud= require('owncloud');
 //initialize server with url, user, pass(app pass)
 const os = new ocloud.Server(url, user, pass);
-//upload pkg and set its properties, location => the target pkg being uploaded
-os.uploadpkg(pkg, ver, type, location).then(data => {console.log(data)}).catch(e =>{
+//upload pkg and set its properties, location => the target pkg being uploaded, overwrite => whether overwritting existing record
+os.uploadpkg(pkg, ver, type, location, overwrite).then(data => {console.log(data)}).catch(e =>{
     console.error(e);
 });
 ```
 
-5. delete pkg 
+6. delete pkg 
 ```js
 //require owncloud
 const ocloud= require('owncloud');
@@ -76,3 +86,7 @@ For details, you can use help commands:
 ```js
 node app.js --help
 ```
+
+## Notice:
+There are also executables available on the github repository
+[https://github.com/JasonYangShadow/owncloud_webdav_js](https://github.com/JasonYangShadow/owncloud_webdav_js)

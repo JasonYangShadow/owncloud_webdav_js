@@ -2,3 +2,4 @@ app.js*
 config.ini
 nedb
 bin/
+pkg.sh
