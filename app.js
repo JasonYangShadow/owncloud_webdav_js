@@ -42,7 +42,7 @@ yargs.command({
                 props.set('config.account.url', 'webdav url address of own cloud');
                 props.set('config.account.user', 'user name on ownCloud service');
                 props.set('config.account.pass', 'app password of the user');
-                props.set('owncloud.share.prefix', 'ignored if you are a normal user');
+                props.set('owncloud.share.prefix', 'please ask the server admin for the location of dbfile, or you can search it on ownCloud instance, the name is "dbfile"');
                 await props.save(filepath).catch(e => { throw e });
             }
         })().catch(err => { console.error(err) }).then(data => { console.log(`have written default config to ${filepath}`) })

@@ -322,6 +322,9 @@ async function readconfig() {
             reject(`could not read config.account.pass property from ${filepath}`);
         }
         let share = props.get('owncloud.share.prefix');
+        if (!share) {
+            reject(`could not read owncloud.share.prefix property from ${filepath}`);
+        }
 
         resolve({ 'url': url, 'user': user, 'pass': pass, 'share': share });
     });
