@@ -240,7 +240,7 @@ yargs.command({
             }
         })();
     }
-}).usage('searchpkg usage: --url=webdav_url --user=user_name --pass=app_password --pkg=package_name --ver=package_version --type=package_type(Singularity, LPMX, Docker, OCI) --op=filter_type(lt,lte,gt,gte) [Note: you can use both client/server account]');
+}).usage('searchcond usage: --url=webdav_url --user=user_name --pass=app_password --pkg=package_name --ver=package_version --type=package_type(Singularity, LPMX, Docker, OCI) --op=filter_type(lt,lte,gt,gte) [Note: you can use both client/server account]');
 
 yargs.command({
     command: 'download',
